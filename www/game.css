@@ -4,6 +4,7 @@ body {
 }
 
 canvas#game {
+  position: fixed;
 }
 
 canvas#minimap {

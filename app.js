@@ -30,7 +30,7 @@ var config = {
     }
   },
   player: {
-    speed: 2,
+    speed: 10,
     width: 50,
     height: 50
   },
@@ -40,7 +40,7 @@ var config = {
 };
 
 
-var playerCount = 0, foodCount = 0, Objects = {}, Sockets = {}, Intervals = {};
+var playerCount = 0, foodCount = 0, Objects = {}, Sockets = {}, Intervals = {}, ObjectsInView = {};
 Objects.Players = {};
 Objects.Food = {};
 
@@ -70,6 +70,7 @@ var Player = function (id, nickname, x, y, socket) {
     maxy: y + (config.viewport.height / 2) + (config.player.width / 2)
   };
   Sockets[id] = socket;
+  ObjectsInView[id] = {Players: {}, Food: {}};
   this.keysDown = {};
   this.width = config.player.width;
   this.height = config.player.height;
@@ -111,17 +112,36 @@ Player.prototype = {
         }
       }
 
+      ObjectsInView[player.id] = {Players: {}, Food: {}};
+
       for (foodPcs in Objects.Food) {
         var food = Objects.Food[foodPcs];
-        if((player.x + player.width) >= (food.x - food.r - food.w)
-        && (player.x) <= (food.x + food.r + food.w)
-        && (player.y + player.height) >= (food.y - food.r - food.w)
-        && (player.y) <= (food.y + food.r + food.w)) {
-          delete Objects.Food[foodPcs];
+
+        if(food.x > player.viewport.minx
+        && food.x < player.viewport.maxx
+        && food.y > player.viewport.miny
+        && food.y < player.viewport.maxy) {
+          if((player.x + player.width) >= (food.x - food.r - food.w)
+          && (player.x) <= (food.x + food.r + food.w)
+          && (player.y + player.height) >= (food.y - food.r - food.w)
+          && (player.y) <= (food.y + food.r + food.w)) {
+            delete Objects.Food[foodPcs];
+          } else {
+            ObjectsInView[player.id].Food[food.id] = Objects.Food[food.id];
+          }
         }
       }
 
-      Sockets[player.id].emit('drawData', [Objects, player.viewport]);
+      for (players in Objects.Players) {
+        if(Objects.Players[players].x > player.viewport.minx
+          && Objects.Players[players].x < player.viewport.maxx
+          && Objects.Players[players].y > player.viewport.miny
+          && Objects.Players[players].y < player.viewport.maxy) {
+          ObjectsInView[player.id].Players[Objects.Players[players].id] = Objects.Players[players];
+        }
+      }
+
+      Sockets[player.id].emit('drawData', [ObjectsInView[player.id], player.viewport]);
     }, 1000 / config.map.fps);
   },
   bindKeys: function () {

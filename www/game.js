@@ -43,8 +43,8 @@ var init = function () {
     socket.on('config', function (data) {
       config = data;
 
-      canvas.width = config.viewport.width;
-      canvas.height = config.viewport.height;
+      canvas.width = config.viewport.width;//document.documentElement.clientWidth;//config.viewport.width;
+      canvas.height = config.viewport.height;//document.documentElement.clientHeight;//config.viewport.height;
       canvas.id = 'game';
       minimap.width = config.map.width / config.minimap.scale;
       minimap.height = config.map.height / config.minimap.scale;
@@ -67,7 +67,6 @@ var init = function () {
     viewport = data[1];
   });
 
-  ctx.globalCompositeOperation='destination-over';
 
   var draw = function () {
 
