@@ -1,0 +1,13 @@
+body {
+  margin: 0;
+  padding: 0;
+}
+
+canvas#game {
+}
+
+canvas#minimap {
+  position: fixed;
+  left: 5px;
+  top: 395px;
+}

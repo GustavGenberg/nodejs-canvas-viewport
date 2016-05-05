@@ -2,7 +2,6 @@ var express = require('express');
 var io = require('socket.io')(3000);
 var app = express();
 
-
 app.use(express.static(__dirname + '/www/'));
 app.listen(2000, function () {
   console.log('Express app listening on port ' + 2000);
@@ -24,11 +23,16 @@ var config = {
   map: {
     height: 5000,
     width: 5000,
-    fps: 1000 / 30,
+    fps: 60,
     bg: '/bg.jpg'
   },
   player: {
-    speed: 10
+    speed: 10,
+    width: 50,
+    height: 50
+  },
+  minimap: {
+    scale: 50
   }
 };
 
@@ -56,10 +60,10 @@ var Player = function (id, nickname, x, y, socket) {
   this.x = x;
   this.y = y;
   this.viewport = {
-    minx: x - (config.viewport.width / 2),
-    miny: y - (config.viewport.height / 2),
-    maxx: x + (config.viewport.width / 2),
-    maxy: y + (config.viewport.height / 2)
+    minx: x - (config.viewport.width / 2) + (config.player.width / 2),
+    miny: y - (config.viewport.height / 2) + (config.player.width / 2),
+    maxx: x + (config.viewport.width / 2) + (config.player.width / 2),
+    maxy: y + (config.viewport.height / 2) + (config.player.width / 2)
   };
   Sockets[id] = socket;
   this.keysDown = {};
@@ -73,28 +77,36 @@ Player.prototype = {
     var player = this;
     Intervals[player.id] = setInterval(function () {
       if(player.keysDown[37] == true) { // Left
-        player.x = player.x - config.player.speed;
-        player.viewport.minx = player.viewport.minx - config.player.speed;
-        player.viewport.maxx = player.viewport.maxx - config.player.speed;
+        if(player.x > 0) {
+          player.x = player.x - config.player.speed;
+          player.viewport.minx = player.viewport.minx - config.player.speed;
+          player.viewport.maxx = player.viewport.maxx - config.player.speed;
+        }
       }
       if(player.keysDown[39] == true) { // Right
-        player.x = player.x + config.player.speed;
-        player.viewport.minx = player.viewport.minx + config.player.speed;
-        player.viewport.maxx = player.viewport.maxx + config.player.speed;
+        if(player.x + config.player.width < config.map.width) {
+          player.x = player.x + config.player.speed;
+          player.viewport.minx = player.viewport.minx + config.player.speed;
+          player.viewport.maxx = player.viewport.maxx + config.player.speed;
+        }
       }
       if(player.keysDown[38] == true) { // Up
-        player.y = player.y - config.player.speed;
-        player.viewport.miny = player.viewport.miny - config.player.speed;
-        player.viewport.maxy = player.viewport.maxy - config.player.speed;
+        if(player.y > 0) {
+          player.y = player.y - config.player.speed;
+          player.viewport.miny = player.viewport.miny - config.player.speed;
+          player.viewport.maxy = player.viewport.maxy - config.player.speed;
+        }
       }
       if(player.keysDown[40] == true) { // Down
-        player.y = player.y + config.player.speed;
-        player.viewport.miny = player.viewport.miny + config.player.speed;
-        player.viewport.maxy = player.viewport.maxy + config.player.speed;
+        if(player.y + config.player.height < config.map.height) {
+          player.y = player.y + config.player.speed;
+          player.viewport.miny = player.viewport.miny + config.player.speed;
+          player.viewport.maxy = player.viewport.maxy + config.player.speed;
+        }
       }
 
       Sockets[player.id].emit('drawData', [Objects, player.viewport]);
-    }, config.map.fps);
+    }, 1000 / config.map.fps);
   },
   bindKeys: function () {
     var player = this;

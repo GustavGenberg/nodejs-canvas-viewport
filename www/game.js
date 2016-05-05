@@ -1,5 +1,7 @@
 var canvas = document.createElement('canvas');
 var ctx = canvas.getContext('2d');
+var minimap = document.createElement('canvas');
+var mctx = minimap.getContext('2d');
 var socket = io(':3000');
 var fps = {fps: {out: 0, count: 0},rfps: {out: 0, count: 0}};
 var drawData = {}, viewport = {};
@@ -40,8 +42,13 @@ var init = function () {
 
       canvas.width = config.viewport.width;
       canvas.height = config.viewport.height;
-      canvas.style.border = '1px solid red';
+      canvas.id = 'game';
+      minimap.width = config.map.width / config.minimap.scale;
+      minimap.height = config.map.height / config.minimap.scale;
+      minimap.style.border = '1px solid red';
+      minimap.id = 'minimap';
       document.body.appendChild(canvas);
+      document.body.appendChild(minimap);
 
       image.background = new Image();
       image.background.src = config.map.bg;
@@ -65,6 +72,7 @@ var init = function () {
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, config.viewport.width, config.viewport.height);
+    mctx.clearRect(0, 0, minimap.width, minimap.height);
 
     ctx.translate( -viewport.minx, -viewport.miny );
 
@@ -76,13 +84,17 @@ var init = function () {
 
     for (player in drawData.Players) {
       var player = drawData.Players[player];
-      ctx.fillRect(player.x, player.y, 10, 10);
       ctx.fillStyle = '#FFF';
-      ctx.fillText(player.nickname, player.x, player.y);
+      ctx.fillRect(player.x, player.y, config.player.width, config.player.height);
+      ctx.fillText(player.nickname, player.x, player.y + config.player.height + 20);
+
+      mctx.fillStyle = '#FFF';
+      mctx.fillRect(player.x / config.minimap.scale, player.y / config.minimap.scale, 5, 5);
+      mctx.fillText(player.nickname, player.x / config.minimap.scale - 25, player.y / config.minimap.scale + 15);
     }
 
     ctx.fillText('FPS: ' + fps.fps.out, viewport.minx + 10, viewport.miny + 15);
-    ctx.fillText('rFPS: ' + fps.rfps.out, viewport.minx + 6, viewport.miny + 25);
+    ctx.fillText('rFPS: ' + fps.rfps.out + ' / ' + config.map.fps, viewport.minx + 6, viewport.miny + 25);
     ctx.fillText('X, Y: ' + Number(viewport.minx + (config.viewport.width / 2)) + ' : ' + Number(viewport.miny + (config.viewport.height / 2)), viewport.minx + 10, viewport.miny + 35);
 
     fps.fps.count++;
