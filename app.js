@@ -24,7 +24,10 @@ var config = {
     height: 5000,
     width: 5000,
     fps: 60,
-    bg: '/bg.jpg'
+    bg: '/bg.jpg',
+    border: {
+      width: 10
+    }
   },
   player: {
     speed: 10,
@@ -42,7 +45,7 @@ Objects.Players = {};
 
 io.on('connect', function (socket) {
   playerCount++;
-  Objects.Players[playerCount] = new Player (playerCount, 'Unnamed' + getRandomValue(0, 100), getRandomValue(0, config.map.width), getRandomValue(0, config.map.height), socket);
+  Objects.Players[playerCount] = new Player (playerCount, 'Unnamed' + getRandomValue(0, 100), getRandomValue(0, config.map.width / 10) * 10, getRandomValue(0, config.map.height / 10) * 10, socket);
 
   log('user connected');
   socket.emit('config', config);
@@ -84,7 +87,7 @@ Player.prototype = {
         }
       }
       if(player.keysDown[39] == true) { // Right
-        if(player.x + config.player.width < config.map.width) {
+        if(player.x < config.map.width - config.player.width) {
           player.x = player.x + config.player.speed;
           player.viewport.minx = player.viewport.minx + config.player.speed;
           player.viewport.maxx = player.viewport.maxx + config.player.speed;
@@ -98,7 +101,7 @@ Player.prototype = {
         }
       }
       if(player.keysDown[40] == true) { // Down
-        if(player.y + config.player.height < config.map.height) {
+        if(player.y < config.map.height - config.player.height) {
           player.y = player.y + config.player.speed;
           player.viewport.miny = player.viewport.miny + config.player.speed;
           player.viewport.maxy = player.viewport.maxy + config.player.speed;

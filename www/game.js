@@ -1,18 +1,17 @@
-var canvas = document.createElement('canvas');
-var ctx = canvas.getContext('2d');
-var minimap = document.createElement('canvas');
-var mctx = minimap.getContext('2d');
-var socket = io(':3000');
-var fps = {fps: {out: 0, count: 0},rfps: {out: 0, count: 0}};
-var drawData = {}, viewport = {};
-var config;
-var cache = {};
-var keysDown = {};
-var image = {};
-
 var init = function () {
 
-
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d');
+  var minimap = document.createElement('canvas');
+  var mctx = minimap.getContext('2d');
+  var socket = io(':3000');
+  var fps = {fps: {out: 0, count: 0},rfps: {out: 0, count: 0}};
+  var drawData = {}, viewport = {};
+  var config;
+  var cache = {};
+  var keysDown = {};
+  var image = {};
+  var disconnected = false;
 
   cache.viewport = {x: 0, y: 0};
 
@@ -33,8 +32,10 @@ var init = function () {
 
   socket.on('connect', function () {
 
-    socket.on('disconnect', function () {
+    if(disconnected) { setTimeout(function () { location.reload() }, 100); }
 
+    socket.on('disconnect', function () {
+      disconnected = true;
     });
 
     socket.on('config', function (data) {
@@ -74,13 +75,14 @@ var init = function () {
     ctx.clearRect(0, 0, config.viewport.width, config.viewport.height);
     mctx.clearRect(0, 0, minimap.width, minimap.height);
 
-    ctx.translate( -viewport.minx, -viewport.miny );
+    ctx.translate(-viewport.minx, -viewport.miny);
 
-    for(var i = 0;i*image.background.width < config.map.width;i++) {
-      for(var j = 0;j*image.background.height < config.map.height;j++) {
+    for(var i = -1;i*image.background.width < config.map.width + image.background.width;i++) {
+      for(var j = -1;j*image.background.height < config.map.height + image.background.height;j++) {
         ctx.drawImage(image.background, i*image.background.width, j*image.background.height);
       }
     }
+
 
     for (player in drawData.Players) {
       var player = drawData.Players[player];
@@ -96,6 +98,20 @@ var init = function () {
     ctx.fillText('FPS: ' + fps.fps.out, viewport.minx + 10, viewport.miny + 15);
     ctx.fillText('rFPS: ' + fps.rfps.out + ' / ' + config.map.fps, viewport.minx + 6, viewport.miny + 25);
     ctx.fillText('X, Y: ' + Number(viewport.minx + (config.viewport.width / 2)) + ' : ' + Number(viewport.miny + (config.viewport.height / 2)), viewport.minx + 10, viewport.miny + 35);
+
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, config.map.height);
+    ctx.moveTo(config.map.width, 0);
+    ctx.lineTo(config.map.width, config.map.height);
+    ctx.moveTo(0, config.map.height);
+    ctx.lineTo(config.map.width, config.map.height);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(config.map.width, 0);
+    ctx.strokeStyle = '#FF0000';
+    ctx.lineWidth = config.map.border.width;
+    ctx.stroke();
 
     fps.fps.count++;
     requestAnimationFrame(draw);
