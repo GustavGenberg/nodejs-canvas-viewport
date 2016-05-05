@@ -1,17 +1,19 @@
+var canvas = document.createElement('canvas');
+var ctx = canvas.getContext('2d');
+var minimap = document.createElement('canvas');
+var mctx = minimap.getContext('2d');
+var socket = io(':3000');
+var fps = {fps: {out: 0, count: 0},rfps: {out: 0, count: 0}};
+var drawData = {}, viewport = {};
+var config;
+var cache = {};
+var keysDown = {};
+var image = {};
+var disconnected = false;
+
 var init = function () {
 
-  var canvas = document.createElement('canvas');
-  var ctx = canvas.getContext('2d');
-  var minimap = document.createElement('canvas');
-  var mctx = minimap.getContext('2d');
-  var socket = io(':3000');
-  var fps = {fps: {out: 0, count: 0},rfps: {out: 0, count: 0}};
-  var drawData = {}, viewport = {};
-  var config;
-  var cache = {};
-  var keysDown = {};
-  var image = {};
-  var disconnected = false;
+
 
   cache.viewport = {x: 0, y: 0};
 
@@ -95,10 +97,23 @@ var init = function () {
       mctx.fillText(player.nickname, player.x / config.minimap.scale - 25, player.y / config.minimap.scale + 15);
     }
 
-    ctx.fillText('FPS: ' + fps.fps.out, viewport.minx + 10, viewport.miny + 15);
-    ctx.fillText('rFPS: ' + fps.rfps.out + ' / ' + config.map.fps, viewport.minx + 6, viewport.miny + 25);
-    ctx.fillText('X, Y: ' + Number(viewport.minx + (config.viewport.width / 2)) + ' : ' + Number(viewport.miny + (config.viewport.height / 2)), viewport.minx + 10, viewport.miny + 35);
+    for (food in drawData.Food) {
+      var food = drawData.Food[food];
+      ctx.beginPath();
+      ctx.arc(food.x, food.y, food.r, 0, 2*Math.PI);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.strokeStyle = 'rgb(107, 0, 255)';
+      ctx.lineWidth = food.w;
+      ctx.stroke();
+      ctx.closePath();
 
+      mctx.beginPath();
+      mctx.arc(food.x / config.minimap.scale, food.y / config.minimap.scale, food.r / config.minimap.scale + 1, 0, 2*Math.PI);
+      mctx.fillStyle = 'red';
+      mctx.fill();
+      mctx.closePath();
+    }
 
     ctx.beginPath();
     ctx.moveTo(0, 0);
@@ -112,6 +127,11 @@ var init = function () {
     ctx.strokeStyle = '#FF0000';
     ctx.lineWidth = config.map.border.width;
     ctx.stroke();
+
+    ctx.fillStyle = '#FFF';
+    ctx.fillText('FPS: ' + fps.fps.out, viewport.minx + 10, viewport.miny + 15);
+    ctx.fillText('rFPS: ' + fps.rfps.out + ' / ' + config.map.fps, viewport.minx + 6, viewport.miny + 25);
+    ctx.fillText('X, Y: ' + Number(viewport.minx + (config.viewport.width / 2)) + ' : ' + Number(viewport.miny + (config.viewport.height / 2)), viewport.minx + 10, viewport.miny + 35);
 
     fps.fps.count++;
     requestAnimationFrame(draw);

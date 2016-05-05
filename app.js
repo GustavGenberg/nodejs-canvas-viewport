@@ -30,7 +30,7 @@ var config = {
     }
   },
   player: {
-    speed: 10,
+    speed: 2,
     width: 50,
     height: 50
   },
@@ -40,8 +40,9 @@ var config = {
 };
 
 
-var playerCount = 0, Objects = {}, Sockets = {}, Intervals = {};
+var playerCount = 0, foodCount = 0, Objects = {}, Sockets = {}, Intervals = {};
 Objects.Players = {};
+Objects.Food = {};
 
 io.on('connect', function (socket) {
   playerCount++;
@@ -70,6 +71,8 @@ var Player = function (id, nickname, x, y, socket) {
   };
   Sockets[id] = socket;
   this.keysDown = {};
+  this.width = config.player.width;
+  this.height = config.player.height;
 
   this.setEmit();
   this.bindKeys();
@@ -108,6 +111,16 @@ Player.prototype = {
         }
       }
 
+      for (foodPcs in Objects.Food) {
+        var food = Objects.Food[foodPcs];
+        if((player.x + player.width) >= (food.x - food.r - food.w)
+        && (player.x) <= (food.x + food.r + food.w)
+        && (player.y + player.height) >= (food.y - food.r - food.w)
+        && (player.y) <= (food.y + food.r + food.w)) {
+          delete Objects.Food[foodPcs];
+        }
+      }
+
       Sockets[player.id].emit('drawData', [Objects, player.viewport]);
     }, 1000 / config.map.fps);
   },
@@ -118,3 +131,18 @@ Player.prototype = {
     });
   }
 };
+
+var Food = function (id, x, y, r, w) {
+  this.id = id;
+  this.x = x;
+  this.y = y;
+  this.r = r;
+  this.w = w;
+};
+
+setInterval(function () {
+  if(Object.keys(Objects.Food).length < 20) {
+    foodCount++;
+    Objects.Food[foodCount] = new Food(foodCount, getRandomValue(100, 4900), getRandomValue(100, 4900), getRandomValue(5, 10), getRandomValue(5, 10));
+  }
+}, 1000);
