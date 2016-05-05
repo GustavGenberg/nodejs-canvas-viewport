@@ -1,0 +1,21 @@
+{
+  "name": "nodejs-canvas-viewport",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GustavGenberg/nodejs-canvas-viewport.git"
+  },
+  "author": "Gustav Genberg",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GustavGenberg/nodejs-canvas-viewport/issues"
+  },
+  "homepage": "https://github.com/GustavGenberg/nodejs-canvas-viewport#readme",
+  "dependencies": {
+    "express": "^4.13.4",
+    "socket.io": "^1.4.6"
+  },
+  "devDependencies": {}
+}
