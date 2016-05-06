@@ -30,7 +30,7 @@ var config = {
     }
   },
   player: {
-    speed: 10,
+    speed: 5,
     width: 50,
     height: 50
   },
@@ -67,7 +67,8 @@ var Player = function (id, nickname, x, y, socket) {
     minx: x - (config.viewport.width / 2) + (config.player.width / 2),
     miny: y - (config.viewport.height / 2) + (config.player.width / 2),
     maxx: x + (config.viewport.width / 2) + (config.player.width / 2),
-    maxy: y + (config.viewport.height / 2) + (config.player.width / 2)
+    maxy: y + (config.viewport.height / 2) + (config.player.width / 2),
+    scale: 1
   };
   Sockets[id] = socket;
   ObjectsInView[id] = {Players: {}, Food: {}};
@@ -77,6 +78,7 @@ var Player = function (id, nickname, x, y, socket) {
 
   this.setEmit();
   this.bindKeys();
+  this.pingCheck();
 };
 
 Player.prototype = {
@@ -133,15 +135,15 @@ Player.prototype = {
       }
 
       for (players in Objects.Players) {
-        if(Objects.Players[players].x > player.viewport.minx
+        if(Objects.Players[players].x + Objects.Players[players].width > player.viewport.minx
           && Objects.Players[players].x < player.viewport.maxx
-          && Objects.Players[players].y > player.viewport.miny
+          && Objects.Players[players].y + Objects.Players[players].height > player.viewport.miny
           && Objects.Players[players].y < player.viewport.maxy) {
           ObjectsInView[player.id].Players[Objects.Players[players].id] = Objects.Players[players];
         }
       }
 
-      Sockets[player.id].emit('drawData', [ObjectsInView[player.id], player.viewport]);
+      Sockets[player.id].emit('drawData', [ObjectsInView[player.id], player.viewport, {count: {players: Object.keys(Objects.Players).length, food: Object.keys(Objects.Food).length}}]);
     }, 1000 / config.map.fps);
   },
   bindKeys: function () {
@@ -149,6 +151,26 @@ Player.prototype = {
     Sockets[player.id].on('keysDown', function (keysDown) {
       player.keysDown = keysDown;
     });
+  },
+  pingCheck: function () {
+    var player = this;
+    Sockets[player.id].on('pingCheck', function (data) {
+      if(Sockets[player.id]) {
+        Sockets[player.id].emit('pingCheck', data);
+      }
+    });
+  },
+  scaleViewport: function (a) {
+    var player = this;
+
+
+    player.viewport.minx = player.viewport.minx - a;
+    player.viewport.maxx = player.viewport.maxx - a;
+
+    player.viewport.miny = player.viewport.miny + a;
+    player.viewport.maxy = player.viewport.maxy + a;
+
+
   }
 };
 
@@ -159,7 +181,6 @@ var Food = function (id, x, y, r, w) {
   this.r = r;
   this.w = w;
 };
-
 setInterval(function () {
   if(Object.keys(Objects.Food).length < 20) {
     foodCount++;

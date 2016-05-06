@@ -4,7 +4,7 @@ var minimap = document.createElement('canvas');
 var mctx = minimap.getContext('2d');
 var socket = io(':3000');
 var fps = {fps: {out: 0, count: 0},rfps: {out: 0, count: 0}};
-var drawData = {}, viewport = {};
+var drawData = {}, viewport = {}, info = {};
 var config;
 var cache = {};
 var keysDown = {};
@@ -65,6 +65,7 @@ var init = function () {
     fps.rfps.count++;
     drawData = data[0];
     viewport = data[1];
+    info = data[2];
   });
 
 
@@ -131,7 +132,8 @@ var init = function () {
     ctx.fillText('FPS: ' + fps.fps.out, viewport.minx + 10, viewport.miny + 15);
     ctx.fillText('rFPS: ' + fps.rfps.out + ' / ' + config.map.fps, viewport.minx + 6, viewport.miny + 25);
     ctx.fillText('X, Y: ' + Number(viewport.minx + (config.viewport.width / 2)) + ' : ' + Number(viewport.miny + (config.viewport.height / 2)), viewport.minx + 10, viewport.miny + 35);
-
+    ctx.fillText('Players: ' + info.count.players, viewport.minx + 10, viewport.miny + 45);
+    ctx.fillText('Ping: ' + cache.ping + ' ms', viewport.minx + 10, viewport.miny + 55);
     fps.fps.count++;
     requestAnimationFrame(draw);
 
@@ -142,7 +144,13 @@ var init = function () {
     fps.fps.count = 0;
     fps.rfps.out = fps.rfps.count;
     fps.rfps.count = 0;
+
+    socket.emit('pingCheck', new Date().getTime());
   }, 1000);
+
+  socket.on('pingCheck', function (data) {
+    cache.ping = new Date().getTime() - data;
+  });
 
 };
 
