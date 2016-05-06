@@ -77,11 +77,11 @@ var init = function () {
     ctx.clearRect(0, 0, config.viewport.width, config.viewport.height);
     mctx.clearRect(0, 0, minimap.width, minimap.height);
 
-    ctx.translate(-viewport.minx, -viewport.miny);
+    ctx.translate(-viewport.minx / viewport.scale, -viewport.miny / viewport.scale);
 
-    for(var i = -1;i*image.background.width < config.map.width + image.background.width;i++) {
-      for(var j = -1;j*image.background.height < config.map.height + image.background.height;j++) {
-        ctx.drawImage(image.background, i*image.background.width, j*image.background.height);
+    for(var i = -1;i*image.background.width / viewport.scale < (config.map.width / viewport.scale) + (image.background.width / viewport.scale);i++) {
+      for(var j = -1;j*image.background.height  / viewport.scale < (config.map.height / viewport.scale) + (image.background.height / viewport.scale);j++) {
+        ctx.drawImage(image.background, 0, 0, image.background.width, image.background.height, i*image.background.width / viewport.scale, j*image.background.height / viewport.scale, image.background.width / viewport.scale, image.background.height / viewport.scale);
       }
     }
 
@@ -89,8 +89,8 @@ var init = function () {
     for (player in drawData.Players) {
       var player = drawData.Players[player];
       ctx.fillStyle = '#FFF';
-      ctx.fillRect(player.x, player.y, config.player.width, config.player.height);
-      ctx.fillText(player.nickname, player.x, player.y + config.player.height + 20);
+      ctx.fillRect(player.x / viewport.scale, player.y / viewport.scale, config.player.width / viewport.scale, config.player.height / viewport.scale);
+      ctx.fillText(player.nickname, player.x / viewport.scale, player.y / viewport.scale + config.player.height + 20);
 
       mctx.fillStyle = '#FFF';
       mctx.fillRect(player.x / config.minimap.scale, player.y / config.minimap.scale, 5, 5);
@@ -100,11 +100,11 @@ var init = function () {
     for (food in drawData.Food) {
       var food = drawData.Food[food];
       ctx.beginPath();
-      ctx.arc(food.x, food.y, food.r, 0, 2*Math.PI);
+      ctx.arc(food.x / viewport.scale, food.y / viewport.scale, food.r / viewport.scale, 0, 2*Math.PI);
       ctx.fillStyle = 'red';
       ctx.fill();
       ctx.strokeStyle = 'rgb(107, 0, 255)';
-      ctx.lineWidth = food.w;
+      ctx.lineWidth = food.w / viewport.scale;
       ctx.stroke();
       ctx.closePath();
 
@@ -117,23 +117,24 @@ var init = function () {
 
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(0, config.map.height);
-    ctx.moveTo(config.map.width, 0);
-    ctx.lineTo(config.map.width, config.map.height);
-    ctx.moveTo(0, config.map.height);
-    ctx.lineTo(config.map.width, config.map.height);
+    ctx.lineTo(0, config.map.height / viewport.scale);
+    ctx.moveTo(config.map.width / viewport.scale, 0);
+    ctx.lineTo(config.map.width / viewport.scale, config.map.height / viewport.scale);
+    ctx.moveTo(0, config.map.height / viewport.scale);
+    ctx.lineTo(config.map.width / viewport.scale, config.map.height / viewport.scale);
     ctx.moveTo(0, 0);
-    ctx.lineTo(config.map.width, 0);
+    ctx.lineTo(config.map.width / viewport.scale, 0);
     ctx.strokeStyle = '#FF0000';
-    ctx.lineWidth = config.map.border.width;
+    ctx.lineWidth = config.map.border.width / viewport.scale;
     ctx.stroke();
 
     ctx.fillStyle = '#FFF';
-    ctx.fillText('FPS: ' + fps.fps.out, viewport.minx + 10, viewport.miny + 15);
-    ctx.fillText('rFPS: ' + fps.rfps.out + ' / ' + config.map.fps, viewport.minx + 6, viewport.miny + 25);
-    ctx.fillText('X, Y: ' + Number(viewport.minx + (config.viewport.width / 2)) + ' : ' + Number(viewport.miny + (config.viewport.height / 2)), viewport.minx + 10, viewport.miny + 35);
-    ctx.fillText('Players: ' + info.count.players, viewport.minx + 10, viewport.miny + 45);
-    ctx.fillText('Ping: ' + cache.ping + ' ms', viewport.minx + 10, viewport.miny + 55);
+    ctx.fillText('FPS: ' + fps.fps.out, viewport.minx / viewport.scale + 10, viewport.miny / viewport.scale + 15);
+    ctx.fillText('rFPS: ' + fps.rfps.out + ' / ' + config.map.fps, viewport.minx / viewport.scale + 6, viewport.miny / viewport.scale + 25);
+    ctx.fillText('X, Y: ' + Number(viewport.minx + (config.viewport.width / 2)) + ' : ' + Number(viewport.miny + (config.viewport.height / 2)), viewport.minx / viewport.scale + 10, viewport.miny / viewport.scale + 35);
+    ctx.fillText('Players: ' + info.count.players, viewport.minx / viewport.scale + 10, viewport.miny / viewport.scale + 45);
+    ctx.fillText('Ping: ' + cache.ping + ' ms', viewport.minx / viewport.scale + 10, viewport.miny / viewport.scale + 55);
+    ctx.fillText('Scale: ' + viewport.scale, viewport.minx / viewport.scale + 10, viewport.miny / viewport.scale + 65);
     fps.fps.count++;
     requestAnimationFrame(draw);
 

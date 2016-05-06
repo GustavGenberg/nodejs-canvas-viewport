@@ -18,7 +18,8 @@ var getRandomValue = function (a, b) {
 var config = {
   viewport: {
     height: 500,
-    width: 500
+    width: 500,
+    defaultScale: 1
   },
   map: {
     height: 5000,
@@ -36,6 +37,9 @@ var config = {
   },
   minimap: {
     scale: 50
+  },
+  food: {
+    limit: 50
   }
 };
 
@@ -55,6 +59,7 @@ io.on('connect', function (socket) {
     clearInterval(Intervals[playerCount]);
     delete Sockets[playerCount];
     delete Objects.Players[playerCount];
+    log('User disconnected');
   });
 });
 
@@ -64,17 +69,18 @@ var Player = function (id, nickname, x, y, socket) {
   this.x = x;
   this.y = y;
   this.viewport = {
-    minx: x - (config.viewport.width / 2) + (config.player.width / 2),
-    miny: y - (config.viewport.height / 2) + (config.player.width / 2),
-    maxx: x + (config.viewport.width / 2) + (config.player.width / 2),
-    maxy: y + (config.viewport.height / 2) + (config.player.width / 2),
-    scale: 1
+    minx: x - ((config.viewport.width / 2) * config.viewport.defaultScale) + ((config.player.width / 2) * config.viewport.defaultScale),
+    miny: y - ((config.viewport.height / 2) * config.viewport.defaultScale) + ((config.player.height / 2) * config.viewport.defaultScale),
+    maxx: x + ((config.viewport.width / 2) * config.viewport.defaultScale) + ((config.player.width / 2) * config.viewport.defaultScale),
+    maxy: y + ((config.viewport.height / 2) * config.viewport.defaultScale) + ((config.player.height / 2) * config.viewport.defaultScale),
+    scale: config.viewport.defaultScale
   };
   Sockets[id] = socket;
   ObjectsInView[id] = {Players: {}, Food: {}};
   this.keysDown = {};
   this.width = config.player.width;
   this.height = config.player.height;
+  this.speed = config.player.speed;
 
   this.setEmit();
   this.bindKeys();
@@ -87,30 +93,30 @@ Player.prototype = {
     Intervals[player.id] = setInterval(function () {
       if(player.keysDown[37] == true) { // Left
         if(player.x > 0) {
-          player.x = player.x - config.player.speed;
-          player.viewport.minx = player.viewport.minx - config.player.speed;
-          player.viewport.maxx = player.viewport.maxx - config.player.speed;
+          player.x = player.x - player.speed;
+          player.viewport.minx = player.viewport.minx - player.speed;
+          player.viewport.maxx = player.viewport.maxx - player.speed;
         }
       }
       if(player.keysDown[39] == true) { // Right
         if(player.x < config.map.width - config.player.width) {
-          player.x = player.x + config.player.speed;
-          player.viewport.minx = player.viewport.minx + config.player.speed;
-          player.viewport.maxx = player.viewport.maxx + config.player.speed;
+          player.x = player.x + player.speed;
+          player.viewport.minx = player.viewport.minx + player.speed;
+          player.viewport.maxx = player.viewport.maxx + player.speed;
         }
       }
       if(player.keysDown[38] == true) { // Up
         if(player.y > 0) {
-          player.y = player.y - config.player.speed;
-          player.viewport.miny = player.viewport.miny - config.player.speed;
-          player.viewport.maxy = player.viewport.maxy - config.player.speed;
+          player.y = player.y - player.speed;
+          player.viewport.miny = player.viewport.miny - player.speed;
+          player.viewport.maxy = player.viewport.maxy - player.speed;
         }
       }
       if(player.keysDown[40] == true) { // Down
         if(player.y < config.map.height - config.player.height) {
-          player.y = player.y + config.player.speed;
-          player.viewport.miny = player.viewport.miny + config.player.speed;
-          player.viewport.maxy = player.viewport.maxy + config.player.speed;
+          player.y = player.y + player.speed;
+          player.viewport.miny = player.viewport.miny + player.speed;
+          player.viewport.maxy = player.viewport.maxy + player.speed;
         }
       }
 
@@ -128,6 +134,8 @@ Player.prototype = {
           && (player.y + player.height) >= (food.y - food.r - food.w)
           && (player.y) <= (food.y + food.r + food.w)) {
             delete Objects.Food[foodPcs];
+            player.viewport.scale += 1;
+            player.rescaleViewport();
           } else {
             ObjectsInView[player.id].Food[food.id] = Objects.Food[food.id];
           }
@@ -160,17 +168,27 @@ Player.prototype = {
       }
     });
   },
-  scaleViewport: function (a) {
+  rescaleViewport: function () {
+    var viewport = this.viewport;
     var player = this;
+    /*viewport.minx = player.x - (((config.viewport.width / 2) * viewport.scale) - (((player.width / 2) * viewport.scale) / 2));
+    viewport.miny = player.y - (((config.viewport.height / 2) * viewport.scale) - (((player.height / 2) * viewport.scale) / 2));
+    viewport.maxx = player.x + (((config.viewport.width / 2) * viewport.scale));
+    viewport.maxy = player.y + (((config.viewport.height / 2) * viewport.scale));*/
 
+    /*player.viewport = {
+      minx: player.x - ((config.viewport.width / 2) * viewport.scale) + ((player.width / 2) * viewport.scale),
+      miny: player.y - ((config.viewport.height / 2) * viewport.scale) + ((player.height / 2) * viewport.scale),
+      maxx: player.x + ((config.viewport.width / 2) * viewport.scale) + ((player.width / 2) * viewport.scale),
+      maxy: player.y + ((config.viewport.height / 2) * viewport.scale) + ((player.height / 2) * viewport.scale),
+      scale: viewport.scale
+    };*/
 
-    player.viewport.minx = player.viewport.minx - a;
-    player.viewport.maxx = player.viewport.maxx - a;
+    viewport.minx = player.x - ((config.viewport.width * viewport.scale) / 2) + (player.width / 2);
+    viewport.maxx = player.x + ((config.viewport.width * viewport.scale) / 2) - (player.width / 2);
 
-    player.viewport.miny = player.viewport.miny + a;
-    player.viewport.maxy = player.viewport.maxy + a;
-
-
+    viewport.miny = player.y - ((config.viewport.height * viewport.scale) / 2) + (player.height / 2);
+    viewport.maxy = player.y + ((config.viewport.height * viewport.scale) / 2) - (player.height / 2);
   }
 };
 
@@ -182,8 +200,8 @@ var Food = function (id, x, y, r, w) {
   this.w = w;
 };
 setInterval(function () {
-  if(Object.keys(Objects.Food).length < 20) {
+  if(Object.keys(Objects.Food).length < config.food.limit) {
     foodCount++;
     Objects.Food[foodCount] = new Food(foodCount, getRandomValue(100, 4900), getRandomValue(100, 4900), getRandomValue(5, 10), getRandomValue(5, 10));
   }
-}, 1000);
+}, 100);
