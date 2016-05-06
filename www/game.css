@@ -5,6 +5,7 @@ body {
 
 canvas#game {
   position: fixed;
+  background: rgb(0, 0, 0);
 }
 
 canvas#minimap {

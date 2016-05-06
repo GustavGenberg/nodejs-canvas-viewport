@@ -52,15 +52,18 @@ io.on('connect', function (socket) {
   playerCount++;
   Objects.Players[playerCount] = new Player (playerCount, 'Unnamed' + getRandomValue(0, 100), getRandomValue(0, config.map.width / 10) * 10, getRandomValue(0, config.map.height / 10) * 10, socket);
 
-  log('user connected');
-  socket.emit('config', config);
+  log('User connected');
 
-  socket.on('disconnect', function () {
-    clearInterval(Intervals[playerCount]);
-    delete Sockets[playerCount];
-    delete Objects.Players[playerCount];
-    log('User disconnected');
-  });
+  setTimeout(function () {
+    socket.emit('config', config);
+
+    socket.on('disconnect', function (r) {
+      clearInterval(Intervals[playerCount]);
+      delete Sockets[playerCount];
+      delete Objects.Players[playerCount];
+      log('User disconnected | ' + r);
+    });
+  }, 100);
 });
 
 var Player = function (id, nickname, x, y, socket) {
@@ -99,7 +102,7 @@ Player.prototype = {
         }
       }
       if(player.keysDown[39] == true) { // Right
-        if(player.x < config.map.width - config.player.width) {
+        if(player.x < config.map.width - player.width) {
           player.x = player.x + player.speed;
           player.viewport.minx = player.viewport.minx + player.speed;
           player.viewport.maxx = player.viewport.maxx + player.speed;
@@ -113,7 +116,7 @@ Player.prototype = {
         }
       }
       if(player.keysDown[40] == true) { // Down
-        if(player.y < config.map.height - config.player.height) {
+        if(player.y < config.map.height - player.height) {
           player.y = player.y + player.speed;
           player.viewport.miny = player.viewport.miny + player.speed;
           player.viewport.maxy = player.viewport.maxy + player.speed;
@@ -134,8 +137,7 @@ Player.prototype = {
           && (player.y + player.height) >= (food.y - food.r - food.w)
           && (player.y) <= (food.y + food.r + food.w)) {
             delete Objects.Food[foodPcs];
-            player.viewport.scale += 1;
-            player.rescaleViewport();
+            player.reSize(player.width + 10, player.height + 10, player.viewport.scale + 0.1);
           } else {
             ObjectsInView[player.id].Food[food.id] = Objects.Food[food.id];
           }
@@ -151,7 +153,7 @@ Player.prototype = {
         }
       }
 
-      Sockets[player.id].emit('drawData', [ObjectsInView[player.id], player.viewport, {count: {players: Object.keys(Objects.Players).length, food: Object.keys(Objects.Food).length}}]);
+      Sockets[player.id].emit('drawData', [ObjectsInView[player.id], player.viewport, {count: {players: Object.keys(Objects.Players).length, food: Object.keys(Objects.Food).length, size: [player.width, player.height]}}]);
     }, 1000 / config.map.fps);
   },
   bindKeys: function () {
@@ -185,10 +187,45 @@ Player.prototype = {
     };*/
 
     viewport.minx = player.x - ((config.viewport.width * viewport.scale) / 2) + (player.width / 2);
-    viewport.maxx = player.x + ((config.viewport.width * viewport.scale) / 2) - (player.width / 2);
+    viewport.maxx = player.x - ((config.viewport.width * viewport.scale) / 2) + (player.width / 2) + (config.viewport.width * viewport.scale);
 
     viewport.miny = player.y - ((config.viewport.height * viewport.scale) / 2) + (player.height / 2);
-    viewport.maxy = player.y + ((config.viewport.height * viewport.scale) / 2) - (player.height / 2);
+    viewport.maxy = player.y - ((config.viewport.height * viewport.scale) / 2) + (player.height / 2) + (config.viewport.height * viewport.scale);
+
+    /*viewport.minx = player.x - ((config.viewport.width * viewport.scale) / 2) + ((player.width / viewport.scale) / 2);
+    viewport.maxx = player.x - ((config.viewport.width * viewport.scale) / 2) + ((player.width / viewport.scale) / 2) + (config.viewport.width * viewport.scale);
+
+    viewport.miny = player.y - ((config.viewport.height * viewport.scale) / 2) + ((player.height / viewport.scale) / 2);
+    viewport.maxy = player.y - ((config.viewport.height * viewport.scale) / 2) + ((player.height / viewport.scale) / 2) + (config.viewport.height * viewport.scale);
+  */
+  },
+  reSize: function (w, h, s) {
+    var player = this;
+
+    player.viewport.scale = s;
+
+    if(w > player.width) {
+      player.x -= ((w - player.width) / 2);
+      player.y -= ((h - player.height) / 2);
+    }
+    if(w < player.width) {
+      player.x += ((player.width - w) / 2);
+      player.y += ((player.height - h) / 2);
+    }
+    if(h > player.hieght) {
+      player.x -= ((w - player.width) / 2);
+      player.y -= ((h - player.height) / 2);
+    }
+    if(h < player.height) {
+      player.x += ((player.width - w) / 2);
+      player.y += ((player.height - h) / 2);
+    }
+
+    player.width = w;
+    player.height = h;
+
+    player.rescaleViewport();
+
   }
 };
 
