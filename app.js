@@ -1,6 +1,7 @@
 var express = require('express');
 var io = require('socket.io')(3000);
 var app = express();
+var util = require('util');
 
 app.use(express.static(__dirname + '/www/'));
 app.listen(2000, function () {
@@ -10,6 +11,46 @@ app.listen(2000, function () {
 var log = function (data) {
   console.log(data);
 };
+
+// Command Line
+var lastCommand = 'quit';
+process.stdin.resume();
+process.stdin.setEncoding('utf8');
+
+process.stdin.on('data', function (command) {
+  command = command.replace('\n', '');
+
+  // Commands
+  var Commands = {
+    quit: {
+      call: function () {
+        process.exit();
+      }
+    },
+    reset: {
+      call: function () {
+        Map.Reset();
+      }
+    },
+    '': {
+      call: function () {
+        Commands[lastCommand].call();
+      }
+    }
+  }
+
+  if(Commands[command]) {
+    Commands[command].call();
+    if(command !== '') {
+      lastCommand = command;
+    }
+    log('The command "' + lastCommand + '" was successfully executed!');
+  } else {
+    log('not found');
+  }
+
+});
+// END Comamnd Line
 
 var getRandomValue = function (a, b) {
   return Math.floor(Math.random() * b) + a;
@@ -33,18 +74,20 @@ var config = {
   player: {
     speed: 5,
     width: 50,
-    height: 50
+    height: 50,
+    reduceLimit: 100 * 100,
+    sizeLimit: 1000 * 1000
   },
   minimap: {
     scale: 50
   },
   food: {
-    limit: 50
+    limit: 100
   }
 };
 
 
-var playerCount = 0, foodCount = 0, Objects = {}, Sockets = {}, Intervals = {}, ObjectsInView = {};
+var playerCount = 0, foodCount = 0, Objects = {}, Sockets = {}, Intervals = {}, ObjectsInView = {}, Map = {};
 Objects.Players = {};
 Objects.Food = {};
 
@@ -56,15 +99,29 @@ io.on('connect', function (socket) {
 
   setTimeout(function () {
     socket.emit('config', config);
-
-    socket.on('disconnect', function (r) {
-      clearInterval(Intervals[playerCount]);
-      delete Sockets[playerCount];
-      delete Objects.Players[playerCount];
-      log('User disconnected | ' + r);
-    });
   }, 100);
 });
+
+Map.Reset = function () {
+  for(player in Objects.Players) {
+    Objects.Players[player].x = getRandomValue(0, config.map.width / 10) * 10;
+    Objects.Players[player].y = getRandomValue(0, config.map.height / 10) * 10;
+    Objects.Players[player].viewport = {
+      minx: Objects.Players[player].x - ((config.viewport.width / 2) * config.viewport.defaultScale) + ((config.player.width / 2) * config.viewport.defaultScale),
+      miny: Objects.Players[player].y - ((config.viewport.height / 2) * config.viewport.defaultScale) + ((config.player.height / 2) * config.viewport.defaultScale),
+      maxx: Objects.Players[player].x + ((config.viewport.width / 2) * config.viewport.defaultScale) + ((config.player.width / 2) * config.viewport.defaultScale),
+      maxy: Objects.Players[player].y + ((config.viewport.height / 2) * config.viewport.defaultScale) + ((config.player.height / 2) * config.viewport.defaultScale),
+      scale: config.viewport.defaultScale
+    };
+    Objects.Players[player].width = config.player.width;
+    Objects.Players[player].height = config.player.height;
+    Objects.Players[player].speed = config.player.speed;
+  }
+
+  for(food in Objects.Food) {
+    delete Objects.Food[food];
+  }
+};
 
 var Player = function (id, nickname, x, y, socket) {
   this.id = id;
@@ -88,6 +145,7 @@ var Player = function (id, nickname, x, y, socket) {
   this.setEmit();
   this.bindKeys();
   this.pingCheck();
+  this.bindEvents();
 };
 
 Player.prototype = {
@@ -137,7 +195,9 @@ Player.prototype = {
           && (player.y + player.height) >= (food.y - food.r - food.w)
           && (player.y) <= (food.y + food.r + food.w)) {
             delete Objects.Food[foodPcs];
-            player.reSize(player.width + 10, player.height + 10, player.viewport.scale + 0.1);
+            if(player.width * player.height < config.player.sizeLimit) {
+              player.reSize(player.width + food.r, player.height + food.r, player.viewport.scale + (0.01 * food.r));
+            }
           } else {
             ObjectsInView[player.id].Food[food.id] = Objects.Food[food.id];
           }
@@ -146,11 +206,32 @@ Player.prototype = {
 
       for (players in Objects.Players) {
         if(Objects.Players[players].x + Objects.Players[players].width > player.viewport.minx
-          && Objects.Players[players].x < player.viewport.maxx
-          && Objects.Players[players].y + Objects.Players[players].height > player.viewport.miny
-          && Objects.Players[players].y < player.viewport.maxy) {
+        && Objects.Players[players].x < player.viewport.maxx
+        && Objects.Players[players].y + Objects.Players[players].height > player.viewport.miny
+        && Objects.Players[players].y < player.viewport.maxy) {
+
           ObjectsInView[player.id].Players[Objects.Players[players].id] = Objects.Players[players];
+
+          if((player.x + player.width) >= (Objects.Players[players].x)
+          && (player.x) <= (Objects.Players[players].x + Objects.Players[players].width)
+          && (player.y + player.height) >= (Objects.Players[players].y)
+          && (player.y) <= (Objects.Players[players].y + Objects.Players[players].height)) {
+
+            if(player.id !== Objects.Players[players].id) {
+              if(player.width * player.height > Objects.Players[players].width * Objects.Players[players].height) {
+                if(player.width * player.height < config.player.sizeLimit) {
+                  player.reSize(player.width + Objects.Players[players].width, player.height + Objects.Players[players].height, player.viewport.scale + (0.01 * (Objects.Players[players].height + Objects.Players[players].width) / 2));
+                }
+                Objects.Players[players].reSpawn();
+              }
+            }
+
+          }
         }
+      }
+
+      if(player.width * player.height > config.player.reduceLimit) {
+        player.reSize(player.width - 0.05, player.height - 0.05, player.viewport.scale - 0.0005);
       }
 
       Sockets[player.id].emit('drawData', [ObjectsInView[player.id], player.viewport, {count: {players: Object.keys(Objects.Players).length, food: Object.keys(Objects.Food).length, size: [player.width, player.height]}}]);
@@ -226,6 +307,29 @@ Player.prototype = {
 
     player.rescaleViewport();
 
+  },
+  bindEvents: function () {
+    var player = this;
+    Sockets[player.id].on('disconnect', function (r) {
+      clearInterval(Intervals[player.id]);
+      delete Sockets[player.id];
+      delete Objects.Players[player.id];
+      log('User disconnected | ' + r);
+    });
+  },
+  reSpawn: function () {
+    this.x = getRandomValue(0, config.map.width / 10) * 10;
+    this.y = getRandomValue(0, config.map.height / 10) * 10;
+    this.viewport = {
+      minx: this.x - ((config.viewport.width / 2) * config.viewport.defaultScale) + ((config.player.width / 2) * config.viewport.defaultScale),
+      miny: this.y - ((config.viewport.height / 2) * config.viewport.defaultScale) + ((config.player.height / 2) * config.viewport.defaultScale),
+      maxx: this.x + ((config.viewport.width / 2) * config.viewport.defaultScale) + ((config.player.width / 2) * config.viewport.defaultScale),
+      maxy: this.y + ((config.viewport.height / 2) * config.viewport.defaultScale) + ((config.player.height / 2) * config.viewport.defaultScale),
+      scale: config.viewport.defaultScale
+    };
+    this.width = config.player.width;
+    this.height = config.player.height;
+    this.speed = config.player.speed;
   }
 };
 
